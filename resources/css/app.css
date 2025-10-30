@@ -1,0 +1,55 @@
+/* =====================================================
+   ✅ Bootstrap & SB Admin 2 Core Styles (Compatible)
+   ===================================================== */
+
+/* Gunakan import dari node_modules agar Vite dapat resolve dengan benar */
+@import "~bootstrap/dist/css/bootstrap.min.css";
+
+/* SB Admin 2 harus diimport dari resources atau public (relatif path),
+   gunakan alias absolut tanpa prefix /public karena Vite build akan gagal
+   jika memakai /public/... */
+@import "../../public/css/sb-admin-2.min.css";
+
+/* =====================================================
+   ✅ Custom Styles for Charts / Tooltip
+   ===================================================== */
+.chartjs-tooltip {
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 12px 14px;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 1000;
+    font-family: 'Nunito', sans-serif;
+    color: #5a5c69;
+    font-size: 14px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Tooltip title highlight */
+.chartjs-tooltip strong {
+    font-weight: 700;
+    color: #4e73df;
+}
+
+/* Table improvements */
+.table th, .table td {
+    vertical-align: middle !important;
+}
+
+/* Sidebar & Navbar tweaks for smoother transition */
+.sidebar,
+.topbar {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Button consistency with SB Admin palette */
+.btn-primary {
+    background-color: #4e73df;
+    border-color: #4e73df;
+}
+.btn-primary:hover {
+    background-color: #2e59d9;
+    border-color: #2653d4;
+}

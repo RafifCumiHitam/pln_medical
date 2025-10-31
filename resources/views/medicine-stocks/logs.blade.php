@@ -68,7 +68,7 @@
                         <td>{{ $stock->stok_akhir }}</td>
                         <td>{{ $stock->keterangan ?? '-' }}</td>
                         <td>{{ \Carbon\Carbon::parse($stock->tanggal_transaksi)->format('d-m-Y') }}</td>
-                        <td>{{ $stock->user->name ?? '-' }}</td>
+                        <td>{{ $stock->user->nama_lengkap ?? '-' }}</td>
                         <td class="text-center">
                             <a href="{{ route('medicine-stocks.edit', $stock->id) }}" class="btn btn-warning btn-sm">
                                 <i class="fas fa-edit"></i>

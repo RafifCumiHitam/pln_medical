@@ -14,7 +14,6 @@ class CreateKaryawansTable extends Migration
             $table->string('no_rm')->unique();
             $table->date('tanggal_lahir');
             $table->enum('jenis_kelamin', ['L', 'P']);
-            $table->text('alamat');
             $table->string('no_telepon');
             $table->string('nid')->unique();
             $table->timestamps();

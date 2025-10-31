@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Visitor;
 use App\Models\Prescription;
 use App\Models\Medicine;
+use App\Models\Karyawan;
 use Faker\Factory as Faker;
 use Carbon\Carbon;
 
@@ -22,17 +23,29 @@ class VisitorSeeder extends Seeder
             $medicines = Medicine::all();
         }
 
+        // Ambil semua karyawan dari DB
+        $karyawans = Karyawan::all();
+
         for ($i = 1; $i <= 10; $i++) {
+            // Tentukan kategori
             $kategori = $faker->randomElement(['karyawan', 'non_karyawan']);
 
-            $detail = $kategori === 'karyawan' ? [
-                'nid' => 'NID' . $faker->unique()->numerify('###'),
-                'nama' => $faker->name,
-            ] : [
-                'nama' => $faker->name,
-                'asal' => $faker->company,
-            ];
+            if ($kategori === 'karyawan' && $karyawans->count() > 0) {
+                // Ambil karyawan random dari DB
+                $karyawan = $karyawans->random();
+                $detail = [
+                    'nid' => $karyawan->nid,
+                    'nama' => $karyawan->nama_karyawan,
+                ];
+            } else {
+                // non_karyawan dummy
+                $detail = [
+                    'nama' => $faker->name,
+                    'asal' => $faker->company,
+                ];
+            }
 
+            // Simpan visitor
             $visitor = Visitor::create([
                 'kategori' => $kategori,
                 'detail' => $detail,
@@ -42,9 +55,9 @@ class VisitorSeeder extends Seeder
                 'tindakan' => $faker->sentence,
                 'cek_tensi' => $faker->randomElement(['120/80', '130/85', '110/70']),
                 'cek_suhu' => $faker->randomFloat(1, 36, 38),
-                'heart_rate' => $faker->numberBetween(60, 100),          // random heart rate
-                'respiratory_rate' => $faker->numberBetween(12, 25),    // random respiratory rate
-                'user_id' => 1, // sesuaikan dengan user id admin / dummy
+                'heart_rate' => $faker->numberBetween(60, 100),
+                'respiratory_rate' => $faker->numberBetween(12, 25),
+                'user_id' => 1, // sesuaikan dengan user admin / dummy
             ]);
 
             // Tambahkan random prescriptions (1-3 obat)

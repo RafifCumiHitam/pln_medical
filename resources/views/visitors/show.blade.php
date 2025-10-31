@@ -25,9 +25,9 @@
                 <td>
                     @if ($visitor->kategori === 'karyawan')
                         <strong>NID:</strong> {{ $visitor->detail['nid'] ?? 'N/A' }} <br>
-                        <strong>Nama:</strong> {{ $visitor->detail['nama'] ?? 'N/A' }}
+                        <strong>Nama Karyawan:</strong> {{ $visitor->detail['nama'] ?? 'N/A' }}
                     @else
-                        <strong>Nama:</strong> {{ $visitor->detail['nama'] ?? 'N/A' }} <br>
+                        <strong>Nama Lengkap:</strong> {{ $visitor->detail['nama'] ?? 'N/A' }} <br>
                         <strong>Asal Perusahaan:</strong> {{ $visitor->detail['asal'] ?? 'N/A' }}
                     @endif
                 </td>

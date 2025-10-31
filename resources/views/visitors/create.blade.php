@@ -27,8 +27,8 @@
             <div class="form-group">
                 <label>Kategori</label>
                 <select name="kategori" id="kategori" class="form-control" onchange="toggleForm()">
-                    <option value="karyawan" selected>Karyawan</option>
-                    <option value="non_karyawan">Non-Karyawan</option>
+                    <option value="karyawan" {{ old('kategori') == 'karyawan' ? 'selected' : '' }}>Karyawan</option>
+                    <option value="non_karyawan" {{ old('kategori') == 'non_karyawan' ? 'selected' : '' }}>Non-Karyawan</option>
                 </select>
             </div>
 
@@ -55,8 +55,19 @@
                             </div>
                         </div>
                     </div>
-                    <input type="hidden" name="nid" id="nid">
-                    <input type="hidden" name="nama_karyawan" id="nama_karyawan_input">
+                    <input type="hidden" name="nid" id="nid" value="{{ old('nid') }}">
+                    <input type="hidden" name="nama_karyawan" id="nama_karyawan_input" value="{{ old('nama_karyawan') }}">
+                    @error('nid')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                {{-- 🔹 Riwayat Karyawan --}}
+                <div class="form-group" id="riwayatContainer" style="display:none;">
+                    <label>Riwayat Karyawan</label>
+                    <div id="riwayatContent" class="border p-3 bg-light rounded" style="max-height:200px; overflow-y:auto;">
+                        <p class="text-muted mb-0">Belum ada riwayat ditemukan.</p>
+                    </div>
                 </div>
             </div>
 
@@ -64,47 +75,56 @@
             <div id="nonKaryawanForm" style="display:none;">
                 <div class="form-group">
                     <label>Nama Non-Karyawan</label>
-                    <input type="text" name="nama_non_karyawan" class="form-control">
+                    <input type="text" name="nama_non_karyawan" class="form-control" value="{{ old('nama_non_karyawan') }}">
                 </div>
                 <div class="form-group">
                     <label>Asal Perusahaan</label>
-                    <input type="text" name="asal_perusahaan" class="form-control">
+                    <input type="text" name="asal_perusahaan" class="form-control" value="{{ old('asal_perusahaan') }}">
                 </div>
+            </div>
+
+            {{-- Tanggal Kunjungan --}}
+            <div class="form-group">
+                <label>Tanggal Kunjungan</label>
+                <input type="date" name="tanggal_kunjungan" class="form-control" value="{{ old('tanggal_kunjungan', date('Y-m-d')) }}" required>
+                @error('tanggal_kunjungan')
+                    <div class="text-danger">{{ $message }}</div>
+                @enderror
             </div>
 
             {{-- Pemeriksaan --}}
             <div class="form-group">
                 <label>Cek Tensi (mmHg)</label>
-                <input type="text" name="cek_tensi" class="form-control" placeholder="Contoh: 120/80" required>
+                <input type="text" name="cek_tensi" class="form-control" placeholder="Contoh: 120/80" value="{{ old('cek_tensi') }}">
             </div>
 
             <div class="form-group">
                 <label>Cek Heart Rate (bpm)</label>
-                <input type="number" name="heart_rate" class="form-control" min="30" max="200" placeholder="Contoh: 75" required>
+                <input type="number" name="heart_rate" class="form-control" min="30" max="200" placeholder="Contoh: 75" value="{{ old('heart_rate') }}">
             </div>
 
             <div class="form-group">
                 <label>Cek Respiratory Rate (kali/menit)</label>
-                <input type="number" name="respiratory_rate" class="form-control" min="5" max="40" placeholder="Contoh: 18" required>
+                <input type="number" name="respiratory_rate" class="form-control" min="5" max="40" placeholder="Contoh: 18" value="{{ old('respiratory_rate') }}">
             </div>
 
             <div class="form-group">
                 <label>Cek Suhu Badan (°C)</label>
-                <input type="number" name="cek_suhu" class="form-control" step="0.1" min="30" max="45" placeholder="Contoh: 36.5" required>
+                <input type="number" name="cek_suhu" class="form-control" step="0.1" min="30" max="45" placeholder="Contoh: 36.5" value="{{ old('cek_suhu') }}">
             </div>
 
             {{-- Keluhan --}}
             <div class="form-group">
                 <label>Keluhan</label>
-                <textarea name="keluhan" class="form-control" required></textarea>
+                <textarea name="keluhan" class="form-control">{{ old('keluhan') }}</textarea>
             </div>
             <div class="form-group">
                 <label>Diagnosis</label>
-                <textarea name="diagnosis" class="form-control"></textarea>
+                <textarea name="diagnosis" class="form-control">{{ old('diagnosis') }}</textarea>
             </div>
             <div class="form-group">
                 <label>Tindakan</label>
-                <textarea name="tindakan" class="form-control"></textarea>
+                <textarea name="tindakan" class="form-control">{{ old('tindakan') }}</textarea>
             </div>
 
             {{-- Resep Obat --}}
@@ -137,7 +157,6 @@
                                                     $latestStock = \App\Models\MedicineStock::where('medicine_id', $medicine->id)
                                                         ->orderBy('id', 'desc')->first();
                                                     $currentStock = $latestStock ? $latestStock->stok_akhir : 0;
-
                                                     if ($currentStock <= 0) {
                                                         $statusStok = '❌ Habis';
                                                         $stokType = 'empty';
@@ -148,7 +167,6 @@
                                                         $statusStok = '✅ Aman (stok)';
                                                         $stokType = 'safe';
                                                     }
-
                                                     $expiredDate = $medicine->expired_date ? \Carbon\Carbon::parse($medicine->expired_date) : null;
                                                     $today = \Carbon\Carbon::today();
                                                     $statusExpired = '✅ Aman (expired)';
@@ -203,6 +221,8 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const kategoriSelect = document.getElementById('kategori');
+    kategoriSelect.addEventListener('change', toggleForm);
     toggleForm();
 
     function toggleForm() {
@@ -211,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('nonKaryawanForm').style.display = kategori === 'non_karyawan' ? 'block' : 'none';
     }
 
-    // ===================== NID Dropdown & Search =====================
+    // NID Dropdown & Riwayat
     const dropdownNidBtn = document.getElementById('dropdownNidBtn');
     const dropdownNidText = document.getElementById('dropdownNidText');
     const nidInput = document.getElementById('nid');
@@ -219,6 +239,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const nidSearchInput = document.getElementById('dropdownNidSearch');
     const nidOptionsContainer = document.getElementById('dropdownNidOptions');
     const nidOptions = Array.from(nidOptionsContainer.querySelectorAll('.nid-option'));
+    const riwayatContainer = document.getElementById('riwayatContainer');
+    const riwayatContent = document.getElementById('riwayatContent');
 
     nidOptions.forEach(opt => {
         opt.addEventListener('click', function(e) {
@@ -226,6 +248,48 @@ document.addEventListener('DOMContentLoaded', function() {
             nidInput.value = this.dataset.value;
             namaInput.value = this.dataset.nama;
             dropdownNidText.textContent = `${this.dataset.value} - ${this.dataset.nama}`;
+
+            fetch(`/get-riwayat/${this.dataset.value}`)
+            .then(res => res.json())
+            .then(data => {
+                riwayatContainer.style.display = 'block';
+                if (data.length === 0) {
+                    riwayatContent.innerHTML = '<p class="text-muted mb-0">Belum ada riwayat ditemukan.</p>';
+                } else {
+                    let html = '';
+                    data.forEach(r => {
+                        let resepHtml = '';
+                        if (r.prescriptions && r.prescriptions.length > 0) {
+                            resepHtml = '<ul class="mb-0">';
+                            r.prescriptions.forEach(p => {
+                                resepHtml += `
+                                    <li>
+                                        <strong>${p.nama_obat}</strong> — Jumlah: ${p.jumlah}, Aturan pakai: ${p.aturan_pakai}
+                                    </li>`;
+                            });
+                            resepHtml += '</ul>';
+                        } else {
+                            resepHtml = '<p class="text-muted mb-0">Tidak ada resep obat.</p>';
+                        }
+
+                        html += `
+                        <div class="card mb-2 shadow-sm">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1"><strong>Tanggal berkunjung:</strong> ${r.tanggal_kunjungan}</h6>
+                                <p class="mb-1"><strong>Diagnosis:</strong> ${r.diagnosis || '-'}</p>
+                                <p class="mb-2 text-muted"><strong>Keluhan:</strong> ${r.keluhan || '-'}</p>
+                                <div><strong>Resep Obat:</strong>${resepHtml}</div>
+                            </div>
+                        </div>`;
+                    });
+
+                    riwayatContent.innerHTML = html;
+                }
+            })
+            .catch(() => {
+                riwayatContainer.style.display = 'block';
+                riwayatContent.innerHTML = '<p class="text-danger mb-0">Gagal memuat riwayat.</p>';
+            });
         });
     });
 
@@ -245,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===================== Prescription Table =====================
+    // Prescription Table logic tetap sama
     const addBtn = document.getElementById('add-prescription');
     const tableBody = document.querySelector('#prescriptionTable tbody');
 
@@ -283,7 +347,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const statusExpired = this.dataset.statusExpired || '';
                 const expiredType = this.dataset.expiredType;
 
-                // ======= Cek duplicate obat di row lain =======
                 const allMedIds = Array.from(document.querySelectorAll('.medicine-id')).map(i=>i.value).filter(v=>v);
                 if(allMedIds.includes(value) && medIdInput.value !== value){
                     Swal.fire({icon:'warning', title:'Duplikasi Obat', html:`${label} sudah dipilih di row lain.`, confirmButtonText:'Mengerti'});

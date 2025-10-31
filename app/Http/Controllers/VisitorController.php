@@ -26,7 +26,9 @@ class VisitorController extends Controller
 
     public function create()
     {
-        $karyawans = Karyawan::all();
+        // ==================== Revisi: fetch dari db2 ====================
+        $karyawans = Karyawan::importFromDb2(); // Ambil data karyawan dari db2 sesuai mapping
+        // ================================================================
 
         $medicines = Medicine::with(['latestStock'])->get()->map(function ($m) {
             $latest = $m->latestStock;
@@ -66,11 +68,13 @@ class VisitorController extends Controller
         return view('visitors.create', compact('karyawans', 'medicines'));
     }
 
-
     public function edit($id)
     {
         $visitor = Visitor::with('prescriptions.medicine.latestStock')->findOrFail($id);
-        $karyawans = Karyawan::all();
+
+        // ==================== Revisi: fetch dari db2 ====================
+        $karyawans = Karyawan::importFromDb2(); // Ambil data karyawan dari db2 sesuai mapping
+        // ================================================================
 
         $medicines = Medicine::with(['latestStock'])->get()->map(function ($m) {
             $latest = $m->latestStock;
@@ -108,16 +112,21 @@ class VisitorController extends Controller
         return view('visitors.edit', compact('visitor', 'karyawans', 'medicines'));
     }
 
-
     public function store(Request $request)
     {
         $validated = $this->validateVisitor($request);
+
+        // =================== Auto-sync/update karyawan ===================
+        if ($request->kategori === 'karyawan') {
+            $this->syncKaryawanDb2ToDb1($request->nid);
+        }
+        // ================================================================
+
         $visitorData = $this->prepareVisitorData($request, $validated);
 
         try {
             DB::beginTransaction();
 
-            // Hapus upload file cek_ekg (diganti heart_rate dan respiratory_rate)
             $visitor = Visitor::create($visitorData);
 
             // Simpan resep
@@ -144,12 +153,18 @@ class VisitorController extends Controller
     {
         $visitor = Visitor::findOrFail($id);
         $validated = $this->validateVisitor($request);
+
+        // =================== Auto-sync/update karyawan ===================
+        if ($request->kategori === 'karyawan') {
+            $this->syncKaryawanDb2ToDb1($request->nid);
+        }
+        // ================================================================
+
         $visitorData = $this->prepareVisitorData($request, $validated, $visitor);
 
         try {
             DB::beginTransaction();
 
-            // Tidak ada upload file lagi (heart_rate & respiratory_rate berupa angka/string)
             $visitor->update($visitorData);
 
             // Update resep
@@ -178,6 +193,34 @@ class VisitorController extends Controller
         $visitor = Visitor::with('prescriptions.medicine.latestStock')->findOrFail($id);
         return view('visitors.show', compact('visitor'));
     }
+
+    public function getRiwayat($nid)
+    {
+        $riwayat = Visitor::where('detail->nid', $nid)
+            ->orderBy('tanggal_kunjungan', 'desc')
+            ->with(['prescriptions.medicine']) // ✅ tambahkan relasi resep & obat
+            ->limit (10)
+            ->get(['id', 'tanggal_kunjungan', 'keluhan', 'diagnosis']);
+
+        // Format response agar mudah dipakai di JS
+        $riwayatData = $riwayat->map(function ($r) {
+            return [
+                'tanggal_kunjungan' => $r->tanggal_kunjungan,
+                'keluhan' => $r->keluhan,
+                'diagnosis' => $r->diagnosis,
+                'prescriptions' => $r->prescriptions->map(function ($p) {
+                    return [
+                        'nama_obat' => $p->medicine->nama_obat ?? '-',
+                        'jumlah' => $p->jumlah ?? '-',
+                        'aturan_pakai' => $p->aturan_pakai ?? '-',
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json($riwayatData);
+    }
+
 
     public function destroy($id)
     {
@@ -282,7 +325,8 @@ class VisitorController extends Controller
     {
         return $request->validate([
             'kategori' => 'required|in:karyawan,non_karyawan',
-            'nid' => 'nullable|required_if:kategori,karyawan|exists:karyawans,nid',
+            // ✅ Revisi: nid hanya required jika kategori karyawan, dan bisa null jika non_karyawan
+            'nid' => 'nullable|required_if:kategori,karyawan',
             'nama_karyawan' => 'nullable|required_if:kategori,karyawan|string',
             'nama_non_karyawan' => 'nullable|required_if:kategori,non_karyawan|string',
             'asal_perusahaan' => 'nullable|required_if:kategori,non_karyawan|string',
@@ -405,5 +449,66 @@ class VisitorController extends Controller
             'record_id' => $medicineId,
             'new_data' => json_encode($stockData),
         ]);
+    }
+
+    public function syncKaryawanDb2ToDb1($nid)
+    {
+        // Ambil data karyawan dari DB2
+        $karyawanDb2 = DB::connection('db2')->table('users as u')
+            ->join('profiles as p', 'u.nid', '=', 'p.nid')
+            ->where('u.nid', $nid)
+            ->select('u.nid', 'u.name', 'p.gender', 'p.tahun_lahir', 'p.telp')
+            ->first();
+
+        if (!$karyawanDb2) {
+            return null;
+        }
+
+        // Mapping gender
+        $jk = strtoupper($karyawanDb2->gender);
+        if (in_array($jk, ['L', 'LAKI', 'LAKI-LAKI'])) {
+            $jk = 'L';
+        } elseif (in_array($jk, ['P', 'PEREMPUAN'])) {
+            $jk = 'P';
+        } else {
+            $jk = null;
+        }
+
+        // === Revisi: format tanggal lahir ===
+        $tahunLahir = $karyawanDb2->tahun_lahir;
+        if (preg_match('/^\d{4}$/', $tahunLahir)) {
+            $tanggalLahir = $tahunLahir . '-01-01';
+        } else {
+            $tanggalLahir = date('Y-m-d', strtotime($tahunLahir));
+        }
+
+        // Cek apakah karyawan sudah ada di DB1
+        $karyawan = Karyawan::where('nid', $karyawanDb2->nid)->first();
+
+        if ($karyawan) {
+            // Update data
+            $karyawan->update([
+                'nama_karyawan' => $karyawanDb2->name,
+                'jenis_kelamin' => $jk,
+                'tanggal_lahir' => $tanggalLahir,
+                'no_telepon' => $karyawanDb2->telp,
+                // no_rm tetap sama karena sudah ada
+            ]);
+        } else {
+            // Generate no_rm unik (misal RM + timestamp + random)
+            $no_rm = 'RM' . time() . rand(100, 999);
+
+            // Insert data baru
+            $karyawan = Karyawan::create([
+                'nid' => $karyawanDb2->nid,
+                'nama_karyawan' => $karyawanDb2->name,
+                'jenis_kelamin' => $jk,
+                'tanggal_lahir' => $tanggalLahir,
+                'no_telepon' => $karyawanDb2->telp,
+                'no_rm' => $no_rm,
+            ]);
+        }
+
+        return $karyawan;
     }
 }

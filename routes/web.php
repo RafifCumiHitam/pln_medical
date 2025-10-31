@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/visitors', [VisitorController::class, 'index'])->name('visitors.index');
     Route::get('/visitors/create', [VisitorController::class, 'create'])->name('visitors.create');
     Route::post('/visitors', [VisitorController::class, 'store'])->name('visitors.store');
+    Route::get('/get-riwayat/{nid}', [VisitorController::class, 'getRiwayat'])->name('visitors.riwayat');
     Route::get('/visitors/{id}', [VisitorController::class, 'show'])->name('visitors.show');
     Route::get('/visitors/{id}/edit', [VisitorController::class, 'edit'])->name('visitors.edit');
     Route::put('/visitors/{id}', [VisitorController::class, 'update'])->name('visitors.update');
